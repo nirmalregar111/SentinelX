@@ -1,0 +1,554 @@
+UPDATE THE EXISTING SENTINELX PROJECT.
+
+IMPORTANT:
+This is an ADDITIVE FEATURE ONLY.
+
+DO NOT change, delete, redesign, replace, or rebuild any previously created feature, page, component, interaction, layout, prototype flow, AI feature, camera feature, incident feature, evidence feature, zone feature, or dashboard.
+
+Preserve the existing SentinelX design exactly.
+
+ONLY ADD the new **Automatic Email Alert** feature.
+
+---
+
+# FEATURE
+
+When a person enters a restricted area and the existing SentinelX intrusion engine confirms the intrusion:
+
+```text
+PERSON DETECTED
+        ↓
+PERSON ENTERS RESTRICTED ZONE
+        ↓
+EXISTING INTRUSION CONFIRMATION
+        ↓
+INCIDENT CREATED
+        ↓
+VIDEO EVIDENCE CREATED
+        ↓
+AUTOMATIC EMAIL SENT TO OWNER
+```
+
+The email must be associated with the same incident.
+
+Do NOT trigger an email for simple person detection.
+
+Only send it when the existing intrusion logic confirms a restricted-area violation.
+
+---
+
+# 1. OWNER EMAIL SETTINGS
+
+Add a new section inside the EXISTING Settings page.
+
+Do not redesign the Settings page.
+
+Add:
+
+```text
+SECURITY ALERTS
+
+Owner Email
+
+[ owner@example.com ]
+
+Email Alerts
+● ENABLED
+
+Send email when:
+☑ Restricted area intrusion
+☐ High-risk incident
+☐ Critical incident
+```
+
+The default important option should be:
+
+```text
+☑ Restricted area intrusion
+```
+
+---
+
+# 2. EMAIL CONFIGURATION
+
+Add a small configuration section:
+
+```text
+EMAIL ALERTS
+
+Recipient
+[ owner@example.com ]
+
+Status
+● CONFIGURED
+
+[ SEND TEST EMAIL ]
+```
+
+After sending a test:
+
+```text
+✓ TEST EMAIL SENT
+
+A test security alert was sent successfully.
+```
+
+If configuration is missing:
+
+```text
+⚠ EMAIL NOT CONFIGURED
+
+Configure an owner email to receive security alerts.
+```
+
+Do not show a fake "sent" status unless the backend confirms it.
+
+---
+
+# 3. INTRUSION EMAIL
+
+When a confirmed intrusion occurs, the backend should generate an email containing:
+
+```text
+SENTINELX SECURITY ALERT
+
+🚨 RESTRICTED AREA INTRUSION DETECTED
+
+Incident
+INC-1042
+
+Severity
+HIGH
+
+Camera
+CAM-03
+Main Entrance Camera
+
+Person
+P-104
+
+Restricted Zone
+Restricted Equipment Area
+
+Detection Time
+10:42:18
+
+Confidence
+96%
+
+Risk Score
+87%
+
+Evidence
+Video evidence available
+
+[ VIEW INCIDENT ]
+```
+
+The email should be professional and easy to understand.
+
+---
+
+# 4. EMAIL PREVIEW UI
+
+Add a new email preview component in Settings or Notifications.
+
+Show:
+
+```text
+EMAIL PREVIEW
+
+To:
+owner@example.com
+
+Subject:
+🚨 SentinelX — Restricted Area Intrusion Detected
+
+--------------------------------
+
+SENTINELX SECURITY ALERT
+
+Restricted area intrusion detected.
+
+Incident:
+INC-1042
+
+Camera:
+CAM-03
+
+Zone:
+Restricted Equipment Area
+
+Detection:
+10:42:18
+
+Severity:
+HIGH
+
+Confidence:
+96%
+
+Risk Score:
+87%
+
+Video Evidence:
+Available
+
+[ VIEW INCIDENT ]
+--------------------------------
+```
+
+This is only a preview.
+
+Do not imply that the preview itself sends an email.
+
+---
+
+# 5. REAL-TIME UI NOTIFICATION
+
+When the backend successfully sends the email, show a notification in the existing SentinelX notification system:
+
+```text
+✓ EMAIL ALERT SENT
+
+Restricted area intrusion detected.
+
+Sent to:
+owner@example.com
+
+Incident:
+INC-1042
+
+[ VIEW INCIDENT ]
+```
+
+If sending fails:
+
+```text
+⚠ EMAIL ALERT FAILED
+
+Unable to send the security alert.
+
+Incident:
+INC-1042
+
+[ RETRY ]
+```
+
+Do not hide email failures.
+
+---
+
+# 6. INCIDENT DETAILS
+
+Do NOT redesign the existing Incident Details page.
+
+Add a small section to the existing incident timeline:
+
+```text
+10:42:18
+🚨 Intrusion confirmed
+
+10:42:19
+🎥 Evidence recording
+
+10:42:24
+✓ Evidence saved
+
+10:42:25
+✉ Email alert sent to owner
+```
+
+If the email failed:
+
+```text
+10:42:25
+⚠ Email alert failed
+```
+
+---
+
+# 7. EMAIL STATUS
+
+Create reusable status variants:
+
+### Sending
+
+```text
+✉ SENDING ALERT
+```
+
+### Sent
+
+```text
+✓ EMAIL SENT
+```
+
+### Failed
+
+```text
+⚠ EMAIL FAILED
+```
+
+### Disabled
+
+```text
+EMAIL ALERTS OFF
+```
+
+---
+
+# 8. EMAIL HISTORY
+
+Add an optional small section to the existing Incident Details or notification area:
+
+```text
+ALERT DELIVERY
+
+Email
+✓ Sent
+
+Recipient
+owner@example.com
+
+Sent At
+10:42:25
+
+Incident
+INC-1042
+```
+
+This allows the owner/security operator to verify that the notification was delivered by the backend.
+
+---
+
+# 9. BACKEND-READY DATA
+
+Design the feature so the backend can maintain an alert record:
+
+```text
+EmailAlert
+
+id
+incidentId
+recipient
+subject
+status
+sentAt
+error
+createdAt
+```
+
+Possible statuses:
+
+```text
+PENDING
+SENDING
+SENT
+FAILED
+```
+
+The frontend should display the status returned by the backend.
+
+---
+
+# 10. IMPORTANT EMAIL LOGIC
+
+The final implementation should follow:
+
+```text
+Person detected
+      ↓
+Is person inside restricted zone?
+      ↓
+YES
+      ↓
+Existing multi-frame confirmation
+      ↓
+Intrusion confirmed
+      ↓
+Create incident
+      ↓
+Create video evidence
+      ↓
+Send email
+      ↓
+Record email status
+```
+
+Do NOT send an email every frame.
+
+Do NOT send repeated emails while the same person remains inside the restricted zone.
+
+For one continuous intrusion:
+
+```text
+1 Incident
+1 Evidence
+1 Email Alert
+```
+
+If the person leaves and later enters again, treat it as a new intrusion according to the existing intrusion logic and allow a new alert.
+
+---
+
+# 11. EMAIL SHOULD INCLUDE EVIDENCE
+
+If video evidence has been successfully created, the email should contain:
+
+```text
+VIDEO EVIDENCE AVAILABLE
+
+Duration
+00:10
+
+Evidence ID
+EVD-0001
+
+[ VIEW INCIDENT ]
+```
+
+Do not attach the actual video directly to the email unless the backend implementation specifically supports it.
+
+Prefer linking the owner to the SentinelX incident/evidence page.
+
+---
+
+# 12. SECURITY
+
+Do NOT expose:
+
+* Email service API keys
+* SMTP passwords
+* Backend secrets
+* Database credentials
+* Supabase service-role keys
+
+Email credentials must remain on the backend/server.
+
+The frontend should only receive safe information such as:
+
+```text
+recipient
+status
+sentAt
+incidentId
+```
+
+---
+
+# 13. PRIVACY
+
+Continue using anonymous person IDs:
+
+```text
+P-001
+P-002
+P-003
+```
+
+Do not add face recognition or real identity information.
+
+---
+
+# 14. OWNER EMAIL VALIDATION
+
+Add validation to the email field.
+
+Invalid:
+
+```text
+owner@
+```
+
+Show:
+
+```text
+Enter a valid email address.
+```
+
+Valid:
+
+```text
+owner@example.com
+```
+
+Show:
+
+```text
+✓ Valid email
+```
+
+---
+
+# 15. MOBILE / RESPONSIVE
+
+The new email settings and email preview should work on:
+
+* Desktop
+* Tablet
+* Mobile
+
+Do not change the existing responsive design.
+
+---
+
+# 16. FINAL HACKATHON FLOW
+
+The prototype should visually demonstrate:
+
+```text
+LIVE CAMERA
+      ↓
+PERSON DETECTED
+      ↓
+PERSON ENTERS RESTRICTED AREA
+      ↓
+🚨 INTRUSION CONFIRMED
+      ↓
+🎥 VIDEO RECORDING
+      ↓
+✓ EVIDENCE SAVED
+      ↓
+✉ EMAIL SENT TO OWNER
+      ↓
+OWNER RECEIVES ALERT
+      ↓
+VIEW INCIDENT
+      ↓
+WATCH VIDEO EVIDENCE
+```
+
+The key message for the judge should be:
+
+> **When SentinelX detects a confirmed restricted-area intrusion, it automatically preserves the video evidence and immediately alerts the owner by email.**
+
+---
+
+# CRITICAL PRESERVATION RULE
+
+DO NOT modify anything that was previously created.
+
+Do not rebuild the dashboard.
+
+Do not rebuild Live Monitoring.
+
+Do not rebuild the camera connection.
+
+Do not rebuild AI detection.
+
+Do not rebuild zones.
+
+Do not rebuild incidents.
+
+Do not rebuild video evidence.
+
+Do not rebuild navigation.
+
+Do not change the existing design system.
+
+ONLY ADD:
+
+**Automatic Owner Email Alert**
+
+Everything else must remain exactly as it currently is.

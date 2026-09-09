@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SentinelX — Camera Sender</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #040709; color: #E8F4FD; font-family: 'Courier New', monospace; overflow: hidden; }
+
+    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid #152030; background: #080E15; flex-shrink: 0;
+    }
+    .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: #22D3EE; }
+    .logo-sub { font-size: 9px; letter-spacing: 0.12em; color: #4A6580; margin-top: 2px; }
+    .status { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    #preview { flex: 1; position: relative; background: #000; overflow: hidden; }
+    video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .mirror { transform: scaleX(-1); }
+
+    .corner { position: absolute; width: 22px; height: 22px; z-index: 5; }
+    .corner.tl { top: 14px; left: 14px; border-top: 2px solid rgba(34,211,238,0.6); border-left: 2px solid rgba(34,211,238,0.6); }
+    .corner.tr { top: 14px; right: 14px; border-top: 2px solid rgba(34,211,238,0.6); border-right: 2px solid rgba(34,211,238,0.6); }
+    .corner.bl { bottom: 14px; left: 14px; border-bottom: 2px solid rgba(34,211,238,0.6); border-left: 2px solid rgba(34,211,238,0.6); }
+    .corner.br { bottom: 14px; right: 14px; border-bottom: 2px solid rgba(34,211,238,0.6); border-right: 2px solid rgba(34,211,238,0.6); }
+
+    .live-badge {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: 999px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4);
+      font-size: 11px; color: #22C55E; letter-spacing: 0.1em; white-space: nowrap;
+    }
+
+    .overlay {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; padding: 32px; text-align: center;
+      background: rgba(4,7,9,0.92);
+    }
+    .overlay h2 { font-size: 15px; font-weight: 700; color: #FF2D2D; letter-spacing: 0.1em; }
+    .overlay p  { font-size: 11px; color: #4A6580; max-width: 280px; line-height: 1.6; }
+
+    footer { flex-shrink: 0; padding: 14px 16px; background: #080E15; border-top: 1px solid #152030; }
+
+    .cam-info { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .cam-box { flex: 1; padding: 8px 12px; border-radius: 8px; background: #0D1520; border: 1px solid #1E2D3D; }
+    .cam-box label { display: block; font-size: 9px; letter-spacing: 0.12em; color: #2E4560; text-transform: uppercase; margin-bottom: 3px; }
+    .cam-box span  { font-size: 11px; color: #94B4CC; }
+
+    button {
+      display: block; width: 100%; padding: 14px; border-radius: 10px; border: none;
+      font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+      cursor: pointer; text-transform: uppercase; transition: opacity 0.15s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:active:not(:disabled) { opacity: 0.8; }
+
+    .btn-connect { background: linear-gradient(135deg,#0d3a4a,#0a2a38); color: #22D3EE; border: 1px solid rgba(34,211,238,0.3); }
+    .btn-stop    { background: #200808; color: #FF2D2D; border: 1px solid rgba(255,45,45,0.3); }
+    .btn-flip    { width: auto; padding: 8px 14px; background: #0D1520; color: #4A6580; border: 1px solid #1E2D3D; border-radius: 8px; font-size: 11px; }
+    .footer-note { text-align: center; font-size: 9px; color: #2E4560; letter-spacing: 0.1em; margin-top: 10px; text-transform: uppercase; }
+    #no-code-msg { color: #FF2D2D; font-size: 12px; text-align: center; padding: 12px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <div class="logo">SENTINELX</div>
+      <div class="logo-sub">CAMERA SENDER</div>
+    </div>
+    <div class="status" id="status-bar">
+      <div class="dot" id="status-dot" style="background:#22D3EE"></div>
+      <span id="status-text" style="color:#22D3EE">READY</span>
+    </div>
+  </header>
+
+  <div id="preview">
+    <video id="cam-video" autoplay muted playsinline></video>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="live-badge" id="live-badge" style="display:none">
+      <div class="dot" style="background:#22C55E;animation:pulse 1s infinite"></div>
+      LIVE &middot; STREAMING TO SENTINELX
+    </div>
+    <div class="overlay" id="error-overlay" style="display:none">
+      <h2 id="err-title">ERROR</h2>
+      <p id="err-body"></p>
+      <button style="width:auto;padding:10px 20px;background:#200808;color:#FF2D2D;border:1px solid rgba(255,45,45,.3);border-radius:8px" onclick="location.reload()">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <footer>
+    <div class="cam-info">
+      <div class="cam-box">
+        <label>Camera</label>
+        <span id="cam-label">Rear Camera &middot; 720p</span>
+      </div>
+      <button class="btn-flip" id="flip-btn" onclick="flipCamera()">Flip</button>
+    </div>
+    <div id="no-code-msg" style="display:none">No pairing code in URL. Open via QR code from SentinelX desktop.</div>
+    <button class="btn-connect" id="main-btn" onclick="startStream()" disabled>START STREAMING</button>
+    <div class="footer-note">SentinelX AI Monitoring &middot; Supabase WebRTC</div>
+  </footer>
+</div>
+
+<script>
+  var SUPABASE_URL = "https://ghxqidamkcdwaegdqmgh.supabase.co";
+  var ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdoeHFpZGFta2Nkd2FlZ2RxbWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NjE4OTIsImV4cCI6MjA4NzQzNzg5Mn0.uEjWjGbFf5viC1jxs1crnrBUgkWdcu5cxEcUSO8GdkU";
+  var ICE_SERVERS  = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
+
+  var params    = new URLSearchParams(window.location.search);
+  var code      = params.get("code") || "";
+  var stream    = null;
+  var facing    = "environment";
+  var pc        = null;
+  var ch        = null;
+  var streaming = false;
+
+  var video      = document.getElementById("cam-video");
+  var mainBtn    = document.getElementById("main-btn");
+  var statusText = document.getElementById("status-text");
+  var statusDot  = document.getElementById("status-dot");
+  var liveBadge  = document.getElementById("live-badge");
+  var errOverlay = document.getElementById("error-overlay");
+  var camLabel   = document.getElementById("cam-label");
+  var noCodeMsg  = document.getElementById("no-code-msg");
+
+  function setStatus(text, color, pulse) {
+    statusText.textContent = text;
+    statusText.style.color = color;
+    statusDot.style.background = color;
+    statusDot.style.animation = pulse ? "pulse 1s infinite" : "none";
+  }
+
+  function showError(title, body) {
+    document.getElementById("err-title").textContent = title;
+    document.getElementById("err-body").textContent  = body;
+    errOverlay.style.display = "flex";
+  }
+
+  function startCamera(facingMode) {
+    if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    }).then(function(s) {
+      stream = s;
+      video.srcObject = stream;
+      video.classList.toggle("mirror", facingMode === "user");
+      camLabel.textContent = (facingMode === "environment" ? "Rear" : "Front") + " Camera - 720p";
+      mainBtn.disabled = !code;
+      setStatus("READY", "#22D3EE", false);
+    }).catch(function(e) {
+      if (e.name === "NotAllowedError") {
+        showError("CAMERA DENIED", "Allow camera access in browser settings, then reload.");
+      } else {
+        showError("CAMERA ERROR", e.message || "Could not start camera.");
+      }
+    });
+  }
+
+  function flipCamera() {
+    facing = facing === "environment" ? "user" : "environment";
+    startCamera(facing);
+  }
+
+  function activate() {
+    if (streaming) return;
+    streaming = true;
+    liveBadge.style.display = "flex";
+    mainBtn.textContent = "STOP STREAM";
+    mainBtn.className   = "btn-stop";
+    mainBtn.disabled    = false;
+    mainBtn.onclick     = stopStream;
+    setStatus("STREAMING", "#22C55E", true);
+  }
+
+  function startStream() {
+    if (!code || !stream) return;
+
+    mainBtn.textContent = "Connecting...";
+    mainBtn.className   = "btn-connect";
+    mainBtn.disabled    = true;
+    setStatus("CONNECTING", "#F59E0B", true);
+
+    var sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+    pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    stream.getTracks().forEach(function(t) { pc.addTrack(t, stream); });
+
+    ch = sb.channel("webrtc-sentinelx-" + code, { config: { broadcast: { ack: false } } });
+
+    pc.onicecandidate = function(e) {
+      if (e.candidate && ch) {
+        ch.send({ type: "broadcast", event: "ice-phone", payload: { candidate: e.candidate.toJSON() } });
+      }
+    };
+
+    pc.onconnectionstatechange = function() {
+      if (pc.connectionState === "connected") activate();
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        setStatus("DISCONNECTED", "#EF4444", false);
+      }
+    };
+
+    ch.on("broadcast", { event: "offer" }, function(msg) {
+      pc.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp)).then(function() {
+        return pc.createAnswer();
+      }).then(function(answer) {
+        return pc.setLocalDescription(answer).then(function() { return answer; });
+      }).then(function() {
+        return ch.send({ type: "broadcast", event: "answer", payload: { sdp: pc.localDescription } });
+      }).then(function() {
+        setTimeout(activate, 3000);
+      }).catch(function(e) {
+        showError("WEBRTC FAILED", e.message || "Could not process offer.");
+      });
+    });
+
+    ch.on("broadcast", { event: "ice-desktop" }, function(msg) {
+      if (msg.payload && msg.payload.candidate) {
+        pc.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(function() {});
+      }
+    });
+
+    ch.subscribe(function(status) {
+      if (status === "SUBSCRIBED") {
+        setStatus("WAITING FOR DESKTOP", "#F59E0B", true);
+      }
+    });
+  }
+
+  function stopStream() {
+    streaming = false;
+    if (pc)  { pc.close(); pc = null; }
+    if (ch)  { ch.unsubscribe(); ch = null; }
+    if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; }
+    liveBadge.style.display = "none";
+    mainBtn.textContent = "START STREAMING";
+    mainBtn.className   = "btn-connect";
+    mainBtn.onclick     = startStream;
+    setStatus("READY", "#22D3EE", false);
+    startCamera(facing);
+  }
+
+  if (!code) {
+    noCodeMsg.style.display = "block";
+    mainBtn.textContent = "OPEN VIA QR CODE";
+  } else {
+    startCamera(facing);
+    mainBtn.onclick = startStream;
+  }
+</script>
+</body>
+</html>
